@@ -1,21 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TextInput } from './components/ui/TextInput';
+import { ApiKeyModal } from './components/ui/ApiKeyModal';
 import { VisualizationContainer } from './components/visualizations/VisualizationContainer';
 import { generateVisualization } from './lib/anthropic-client';
 import type { VisualizationData } from './types';
+
+const API_KEY_STORAGE_KEY = 'goodgraphs_openai_key';
 
 function App() {
   const [visualization, setVisualization] = useState<VisualizationData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    if (savedKey) {
+      setApiKey(savedKey);
+    } else {
+      // Show modal on first load if no key
+      setIsApiKeyModalOpen(true);
+    }
+  }, []);
+
+  const handleSaveApiKey = (newApiKey: string) => {
+    setApiKey(newApiKey);
+    localStorage.setItem(API_KEY_STORAGE_KEY, newApiKey);
+  };
 
   const handleGenerate = async (text: string) => {
+    if (!apiKey) {
+      setError('Please set your OpenAI API key first');
+      setIsApiKeyModalOpen(true);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await generateVisualization(text);
+      const result = await generateVisualization(text, apiKey);
       setVisualization(result);
     } catch (err) {
       console.error('Generation error:', err);
@@ -43,16 +70,37 @@ function App() {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-20"
           >
-            <h1 className="text-6xl font-bold mb-4" style={{
-              background: 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              letterSpacing: '-0.04em',
-              lineHeight: '1.1'
-            }}>
-              GoodGraphs
-            </h1>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <h1 className="text-6xl font-bold" style={{
+                background: 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                letterSpacing: '-0.04em',
+                lineHeight: '1.1'
+              }}>
+                GoodGraphs
+              </h1>
+
+              {/* Settings Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsApiKeyModalOpen(true)}
+                className="p-2 rounded-lg transition-all"
+                style={{
+                  backgroundColor: apiKey ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  color: apiKey ? '#10b981' : '#ef4444',
+                }}
+                title={apiKey ? 'API key configured' : 'Configure API key'}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </motion.button>
+            </div>
+
             <p className="text-xl text-slate-600 font-medium max-w-2xl mx-auto leading-relaxed">
               Transform natural language into world-class animated business visualizations
             </p>
@@ -108,7 +156,17 @@ function App() {
                   <svg className="w-5 h-5 mt-0.5" style={{ color: '#ef4444' }} fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
-                  <p className="text-sm font-medium" style={{ color: '#991b1b' }}>{error}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium" style={{ color: '#991b1b' }}>{error}</p>
+                    {error.includes('API key') && (
+                      <button
+                        onClick={() => setIsApiKeyModalOpen(true)}
+                        className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700"
+                      >
+                        Configure API key →
+                      </button>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -162,26 +220,51 @@ function App() {
               </div>
               <h3 className="text-2xl font-semibold text-slate-800 mb-3">Get Started</h3>
               <p className="text-slate-600 mb-8 leading-relaxed">
-                Describe your business data in plain English, and watch as AI creates<br />a beautiful, animated visualization in seconds.
+                {apiKey ? (
+                  <>Describe your business data in plain English, and watch as AI creates<br />a beautiful, animated visualization in seconds.</>
+                ) : (
+                  <>Click the settings icon above to add your OpenAI API key, then start creating visualizations.</>
+                )}
               </p>
-              <div className="grid gap-3 text-left max-w-md mx-auto">
-                <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#f8fafc' }}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2" />
-                  <p className="text-sm text-slate-700">"Our revenue grew from $2M to $8M over 3 years"</p>
+              {apiKey ? (
+                <div className="grid gap-3 text-left max-w-md mx-auto">
+                  <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#f8fafc' }}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2" />
+                    <p className="text-sm text-slate-700">"Our revenue grew from $2M to $8M over 3 years"</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#f8fafc' }}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
+                    <p className="text-sm text-slate-700">"Customer acquisition increased 300% from January to June"</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#f8fafc' }}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2" />
+                    <p className="text-sm text-slate-700">"Website traffic: Jan 10K, Feb 12K, Mar 15K, Apr 18K"</p>
+                  </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#f8fafc' }}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
-                  <p className="text-sm text-slate-700">"Customer acquisition increased 300% from January to June"</p>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#f8fafc' }}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2" />
-                  <p className="text-sm text-slate-700">"Website traffic: Jan 10K, Feb 12K, Mar 15K, Apr 18K"</p>
-                </div>
-              </div>
+              ) : (
+                <button
+                  onClick={() => setIsApiKeyModalOpen(true)}
+                  className="px-8 py-4 rounded-xl font-semibold text-white transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    boxShadow: '0px 8px 16px rgba(59, 130, 246, 0.25)',
+                  }}
+                >
+                  Configure API Key
+                </button>
+              )}
             </motion.div>
           )}
         </div>
       </div>
+
+      {/* API Key Modal */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        onSave={handleSaveApiKey}
+        currentApiKey={apiKey}
+      />
     </div>
   );
 }
