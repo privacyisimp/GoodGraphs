@@ -29,7 +29,7 @@ A design-first web application that converts simple text descriptions into premi
 - Node.js 18+ and npm
 - Anthropic API key ([get one here](https://console.anthropic.com/))
 
-### Installation
+### Local Development
 
 1. Clone the repository:
    ```bash
@@ -49,15 +49,41 @@ A design-first web application that converts simple text descriptions into premi
 
 4. Add your Anthropic API key to `.env`:
    ```
-   VITE_ANTHROPIC_API_KEY=your_api_key_here
+   ANTHROPIC_API_KEY=your_api_key_here
    ```
 
-5. Start the development server:
+5. Start the development server with Vercel CLI (to test API routes locally):
+   ```bash
+   npm install -g vercel
+   vercel dev
+   ```
+
+   Or for frontend-only development:
    ```bash
    npm run dev
    ```
 
-6. Open your browser to the URL shown in the terminal (typically `http://localhost:5173`)
+6. Open your browser to the URL shown in the terminal
+
+### Deploying to Vercel
+
+1. Install Vercel CLI if you haven't already:
+   ```bash
+   npm install -g vercel
+   ```
+
+2. Deploy to Vercel:
+   ```bash
+   vercel
+   ```
+
+3. Set up environment variable in Vercel:
+   - Go to your project settings in Vercel dashboard
+   - Navigate to "Environment Variables"
+   - Add: `ANTHROPIC_API_KEY` with your API key value
+   - Redeploy if necessary
+
+4. Your app is now live! The serverless API will handle Anthropic requests securely.
 
 ## Usage
 
@@ -168,8 +194,9 @@ Every pixel is considered. Every animation is intentional.
 
 ## Notes
 
-- The Anthropic API key is exposed in the frontend for this prototype. For production, implement a backend proxy.
-- Chart size warnings in build are expected due to bundled dependencies. Future optimization will implement code splitting.
+- **Security**: The Anthropic API is now called through a Vercel serverless function (`/api/generate`), keeping your API key secure on the backend.
+- **Performance**: Chart size warnings in build are expected due to bundled dependencies (Recharts + Framer Motion). Future optimization will implement code splitting.
+- **Deployment**: Designed for Vercel deployment with zero-config serverless API routes. Can be adapted for other platforms by modifying the API directory structure.
 
 ## Success Criteria
 
